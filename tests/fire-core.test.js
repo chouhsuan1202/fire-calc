@@ -2,23 +2,15 @@
  * FireCore 單元測試（純 Node，不需要安裝任何套件）
  * 執行：node tests/fire-core.test.js
  *
- * 做法：從 index.html 抽出 <script id="fire-core"> 這段，放進 vm 沙盒執行，
- * 這樣網頁還是單一 HTML 檔，測試跑的也是同一份程式碼。
+ * 做法：直接 require 根目錄的 fire-core.js，跟網頁載入的是同一個檔案。
  */
 "use strict";
 
 var fs = require("fs");
 var path = require("path");
-var vm = require("vm");
 var assert = require("assert");
 
-var html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
-var match = html.match(/<script id="fire-core">([\s\S]*?)<\/script>/);
-if(!match) throw new Error("index.html 裡找不到 <script id=\"fire-core\">");
-var sandbox = {};
-vm.createContext(sandbox);
-vm.runInContext(match[1], sandbox);
-var C = sandbox.FireCore;
+var C = require(path.join(__dirname, "..", "fire-core.js"));
 
 var passed = 0;
 var failed = 0;
