@@ -62,7 +62,8 @@ input[type=number]:focus{outline:none; border-bottom-color:var(--accent); box-sh
 input[type=number][aria-invalid="true"]{border-bottom-color:var(--bad)}
 input[type=number][aria-invalid="true"]:focus{box-shadow:0 1px 0 0 var(--bad)}
 .field-err{margin:4px 0 0; font-size:12px; font-weight:500; color:var(--bad)}
-.field-err[hidden]{display:none}
+/* 錯誤提示一直留在頁面上（空的時候高度 0），讀屏軟體才會在出現錯誤時唸出來 */
+.field-err:empty{margin:0}
 .slider-row{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:6px}
 .slider-row label{font-size:inherit; font-weight:inherit; margin:0}
 .slider-val{font-size:34px; font-weight:900; font-variant-numeric:tabular-nums}
@@ -145,7 +146,7 @@ input.rate-input{width:70px; font-size:15px; font-weight:700; display:inline-blo
       </div>
       <div class="rate-inline">
         <label for="rate">1 EUR = <input type="number" id="rate" step="0.01" min="0" value="36.78" class="rate-input" inputmode="decimal" aria-describedby="rate-err"> TWD</label>
-        <p class="field-err" id="rate-err" hidden></p>
+        <p class="field-err" id="rate-err" aria-live="polite"></p>
       </div>
     </div>
 
@@ -153,29 +154,29 @@ input.rate-input{width:70px; font-size:15px; font-weight:700; display:inline-blo
       <div>
         <label for="asset">現有投資資產 <span class="unit" data-ccy-unit>EUR</span></label>
         <input type="number" id="asset" step="1" min="0" value="200000" inputmode="decimal" aria-describedby="asset-err">
-        <p class="field-err" id="asset-err" hidden></p>
+        <p class="field-err" id="asset-err" aria-live="polite"></p>
       </div>
       <div>
         <label for="curExpense">現在每月支出 <span class="unit" data-ccy-unit>EUR</span></label>
         <input type="number" id="curExpense" step="1" min="0" value="4000" inputmode="decimal" aria-describedby="curExpense-err">
-        <p class="field-err" id="curExpense-err" hidden></p>
+        <p class="field-err" id="curExpense-err" aria-live="polite"></p>
       </div>
       <div>
         <label for="retireExpense">退休後每月支出 <span class="unit"><span data-ccy-unit>EUR</span>，不確定就跟現在一樣</span></label>
         <input type="number" id="retireExpense" step="1" min="0" value="4000" inputmode="decimal" aria-describedby="retireExpense-err">
-        <p class="field-err" id="retireExpense-err" hidden></p>
+        <p class="field-err" id="retireExpense-err" aria-live="polite"></p>
       </div>
       <div>
         <label for="annual">每年再投入 <span class="unit"><span data-ccy-unit>EUR</span>，不投填 0</span></label>
         <input type="number" id="annual" step="1" min="0" value="10000" inputmode="decimal" aria-describedby="annual-err">
-        <p class="field-err" id="annual-err" hidden></p>
+        <p class="field-err" id="annual-err" aria-live="polite"></p>
       </div>
     </div>
 
     <div style="margin-top:16px">
       <label for="baseReturn">底層報酬率 <span class="unit">%，0050／QQQ 長期約 10%、全球指數保守 8%、底線 6%</span></label>
       <input type="number" id="baseReturn" step="0.1" min="-50" max="50" value="8" aria-describedby="baseReturn-err">
-      <p class="field-err" id="baseReturn-err" hidden></p>
+      <p class="field-err" id="baseReturn-err" aria-live="polite"></p>
       <div class="rate-btns" role="group" aria-label="常用報酬率">
         <button type="button" class="rate-btn" data-rate="6" aria-pressed="false" aria-label="底層報酬 6%">6</button>
         <button type="button" class="rate-btn" data-rate="8" aria-pressed="false" aria-label="底層報酬 8%">8</button>
@@ -191,12 +192,12 @@ input.rate-input{width:70px; font-size:15px; font-weight:700; display:inline-blo
         <div>
           <label for="lump">一次投入 <span class="unit"><span data-ccy-unit>EUR</span>，例如增貸進場的一筆錢</span></label>
           <input type="number" id="lump" step="1" min="0" value="0" inputmode="decimal" aria-describedby="lump-err">
-          <p class="field-err" id="lump-err" hidden></p>
+          <p class="field-err" id="lump-err" aria-live="polite"></p>
         </div>
         <div>
           <label for="loanRate">借款利率 <span class="unit">%</span></label>
           <input type="number" id="loanRate" step="0.1" min="0" max="30" value="4" inputmode="decimal" aria-describedby="loanRate-err">
-          <p class="field-err" id="loanRate-err" hidden></p>
+          <p class="field-err" id="loanRate-err" aria-live="polite"></p>
         </div>
       </div>
       <div style="margin-top:22px">
@@ -266,7 +267,7 @@ input.rate-input{width:70px; font-size:15px; font-weight:700; display:inline-blo
     </div>
   </details>
 
-  <p class="fine">這是名目報酬，沒扣通膨，要看今日購買力每個報酬率再減 2% 左右。資料來自六位槓桿老師的公開內容整理，只是把他們的公式放在一起，不是任何人的投資建議。</p>
+  <p class="fine">這是名目報酬，沒扣通膨。要看今日購買力，底層報酬與借款利率都換成實質報酬再填：(1 + 名目) 除以 (1 + 通膨) 再減 1，例如通膨 2% 時 8% 是 5.9%，不是直接減成 6%。資料來自六位槓桿老師的公開內容整理，只是把他們的公式放在一起，不是任何人的投資建議。</p>
   <p class="sig">槓桿老師知識庫 · 2026</p>
 </main>
 
@@ -388,12 +389,10 @@ input.rate-input{width:70px; font-size:15px; font-weight:700; display:inline-blo
       fieldErrors[id] = true;
       input.setAttribute("aria-invalid", "true");
       errEl.textContent = message;
-      errEl.hidden = false;
     }else{
       delete fieldErrors[id];
       input.removeAttribute("aria-invalid");
       errEl.textContent = "";
-      errEl.hidden = true;
     }
   }
 
