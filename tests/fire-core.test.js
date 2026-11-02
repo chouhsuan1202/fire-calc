@@ -324,5 +324,81 @@ test("sanitizeState：怪異的 JSON 不會出錯也不會污染原型", functio
   assert.strictEqual(C.sanitizeState({ leverage: Infinity }).leverage, 1);
 });
 
+// ---------- 第三輪：公式對照 docs/formulas.md 與邊界值 ----------
+
+test("公式 1 目標金額：每月 4000 乘以 12 乘以 15 = 720,000", function(){
+  assert.strictEqual(C.targetAmount(4000, 15), 720000);
+  // 隱含提領率 = 1 除以 倍數
+  near(12 * 4000 / C.targetAmount(4000, 25), 0.04);
+});
+test("公式 2 有效報酬：6% 底層、1.5 倍、1.5% 借款 = 8.25%", function(){
+  near(C.effectiveReturn(0.06, 1.5, 0.015), 0.0825, 1e-15);
+});
+test("公式 3 逐年資產：V1 = V0 乘以 (1 + g) 加 A", function(){
+  assert.strictEqual(C.stepYear(200000, 10000, 0.08), 226000);
+  assert.strictEqual(C.stepYear(100000, 50000, 0), 150000);
+  near(C.stepYear(500000, 30000, -0.02), 520000, 1e-9);
+});
+test("公式 3 封閉解：6%、20 萬、每年 1 萬，第 17 年約 820,683", function(){
+  var g = 0.06, n = 17, f = Math.pow(1 + g, n);
+  var closed = 200000 * f + 10000 * (f - 1) / g;
+  var v = 200000;
+  for(var k = 0; k < n; k++) v = C.stepYear(v, 10000, g);
+  near(v, closed, 1e-6);
+  assert.strictEqual(C.formatAmount(v), "820,683");
+});
+
+test("修正：formatPercent 先去掉浮點雜訊，8.25% 顯示 8.3%（跟 withdraw-calc 的 pct 一致）", function(){
+  // 0.06 + 0.5 乘以 0.045 在浮點數是 0.08249999999999999
+  assert.ok(C.effectiveReturn(0.06, 1.5, 0.015) < 0.0825);
+  assert.strictEqual(C.formatPercent(C.effectiveReturn(0.06, 1.5, 0.015)), "8.3%");
+  assert.strictEqual(C.formatPercent(C.effectiveReturn(0.06, 1.9, 0.015)), "10.1%"); // 10.05%
+  assert.strictEqual(C.formatPercent(C.effectiveReturn(0.08, 1.5, 0.035)), "10.3%"); // 10.25%
+  assert.strictEqual(C.clean(0.1 + 0.2), 0.3);
+});
+test("修正：通膨換算用 (1 + 名目) 除以 (1 + 通膨) 減 1，直接減 2 個百分點會少算一年", function(){
+  var real = (1.08 / 1.02) - 1;
+  near(real, 0.0588235294, 1e-9);
+  // 預設值、17 倍：直接減成 6% 是 17 年；精確的 5.88% 與畫面上填 5.9% 都是 18 年
+  assert.strictEqual(C.yearsToTarget(200000, 10000, 0.06, 816000), 17);
+  assert.strictEqual(C.yearsToTarget(200000, 10000, real, 816000), 18);
+  assert.strictEqual(C.yearsToTarget(200000, 10000, 0.059, 816000), 18);
+  // 槓桿時借款利率也一起換算，結果等於把名目有效報酬整個換算
+  var pi = 0.02, r = 0.08, i = 0.04, L = 1.5;
+  var rr = (1 + r) / (1 + pi) - 1, ii = (1 + i) / (1 + pi) - 1;
+  near(C.effectiveReturn(rr, L, ii), (1 + C.effectiveReturn(r, L, i)) / (1 + pi) - 1, 1e-15);
+});
+
+test("邊界：0 年（上限設 0）只看現在是否已達標", function(){
+  assert.strictEqual(C.yearsToTarget(1200000, 0, 0.08, 1200000, 0), 0);
+  assert.strictEqual(C.yearsToTarget(1199999, 1e9, 0.08, 1200000, 0), null);
+  var p = C.projectYears(0, 0, 0, [{ mult: 25, target: 1 }], 0, 0);
+  assert.strictEqual(p.rows.length, 0);
+});
+test("邊界：0 報酬，年數 = (目標 減 V0) 除以 A 無條件進位", function(){
+  // (750,000 減 100,000) 除以 50,000 = 13
+  assert.strictEqual(C.yearsToTarget(100000, 50000, 0, 750000), 13);
+  // 多 1 元就要第 14 年
+  assert.strictEqual(C.yearsToTarget(100000, 50000, 0, 750001), 14);
+  // 0 報酬又不投入，永遠到不了
+  assert.strictEqual(C.yearsToTarget(100000, 0, 0, 750000), null);
+});
+test("邊界：負報酬，-2% 下 6 年到；-5% 的穩定點低於目標就到不了", function(){
+  // V_n = 1,500,000 減 1,000,000 乘以 0.98^n，要 >= 600,000：0.98^n <= 0.9，n >= 5.2
+  assert.strictEqual(C.yearsToTarget(500000, 30000, -0.02, 600000), 6);
+  // -5%：V 會收斂到 10,000 除以 0.05 = 200,000，到不了 120 萬
+  assert.strictEqual(C.yearsToTarget(500000, 10000, -0.05, 1200000), null);
+  // 負報酬時資產每年遞減也不會變負數
+  var v = 500000;
+  for(var k = 0; k < 60; k++){ v = C.stepYear(v, 0, -0.5); assert.ok(v >= 0); }
+});
+test("邊界：極大金額（輸入上限）不溢位，4 年到", function(){
+  // 10 兆、每年 1 兆、50%：16 兆、25 兆、38.5 兆、58.75 兆；目標 1000 億乘以 12 乘以 33 = 39.6 兆
+  var target = C.targetAmount(C.FIELD_RULES.retireExpense.max, 33);
+  assert.strictEqual(target, 3.96e13);
+  assert.strictEqual(C.yearsToTarget(C.FIELD_RULES.asset.max, C.FIELD_RULES.annual.max, 0.5, target), 4);
+  assert.strictEqual(C.formatAmount(target), "39,600,000,000,000");
+});
+
 console.log((failed ? "失敗" : "全部通過") + "：" + passed + " 通過，" + failed + " 失敗");
 process.exit(failed ? 1 : 0);
