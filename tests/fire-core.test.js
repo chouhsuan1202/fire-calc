@@ -258,5 +258,79 @@ test("sanitizeState：保留合法的舊設定", function(){
   assert.strictEqual(s.retireTouched, true);
 });
 
+// ---------- 第二輪：更多極端輸入 ----------
+
+test("parseField：瀏覽器回報 badInput 時算錯，不會默默變 0", function(){
+  // 例如打到一半的「1e」或「1000,5」，瀏覽器給的 value 是空字串
+  assert.strictEqual(C.parseField("", C.FIELD_RULES.asset, true).error, "請填一個有效的數字");
+  assert.strictEqual(C.parseField("", C.FIELD_RULES.annual, true).ok, false);
+  assert.deepStrictEqual(plain(C.parseField("", C.FIELD_RULES.asset, false)), { ok: true, value: 0 });
+});
+test("parseField：NaN、Infinity、十六進位以外的怪字串", function(){
+  ["NaN", "Infinity", "-Infinity", "1,000", "--1", ".", "1e", "∞"].forEach(function(s){
+    assert.strictEqual(C.parseField(s, C.FIELD_RULES.asset).ok, false, s);
+  });
+  // 極小值會被當成 0，必填且需大於 0 的欄位要擋下
+  assert.strictEqual(C.parseField("1e-400", C.FIELD_RULES.retireExpense).ok, false);
+  assert.strictEqual(C.parseField("1e-400", C.FIELD_RULES.rate).ok, false);
+  // 上限邊界本身合法
+  assert.strictEqual(C.parseField("50", C.FIELD_RULES.baseReturn).ok, true);
+  assert.strictEqual(C.parseField("-50", C.FIELD_RULES.baseReturn).ok, true);
+  assert.strictEqual(C.parseField("1e13", C.FIELD_RULES.asset).ok, true);
+});
+test("極端組合：所有金額都在上限，計算不會出現 NaN 或 Infinity", function(){
+  var R = C.FIELD_RULES;
+  var start = R.asset.max + R.lump.max;
+  [[0.5, 2, 0], [-0.5, 2, 0.3], [0, 1, 0], [0.5, 1, 0.3]].forEach(function(x){
+    var eff = C.effectiveReturn(x[0], x[1], x[2]);
+    C.MULTIPLES.forEach(function(m){
+      var target = C.targetAmount(R.retireExpense.max, m.mult);
+      var y = C.yearsToTarget(start, R.annual.max, eff, target);
+      assert.ok(y === null || (y >= 0 && y <= C.YEAR_CAP), "年數 " + y);
+    });
+    var proj = C.projectYears(start, R.annual.max, eff, [{ mult: 33, target: C.targetAmount(R.retireExpense.max, 33) }]);
+    proj.rows.forEach(function(r){ assert.ok(isFinite(r.value) && r.value >= 0, "資產 " + r.value); });
+  });
+});
+test("極端組合：最高報酬加最高槓桿，60 年也不會溢位", function(){
+  // 有效報酬 = 0.5 + 1 乘以 0.5 = 100%，資產每年翻倍
+  var eff = C.effectiveReturn(0.5, 2, 0);
+  near(eff, 1);
+  var proj = C.projectYears(1e13, 1e12, eff, [{ mult: 33, target: Number.MAX_VALUE }]);
+  assert.strictEqual(proj.rows.length, C.YEAR_CAP);
+  assert.ok(isFinite(proj.rows[C.YEAR_CAP - 1].value));
+  assert.ok(C.formatAmount(proj.rows[C.YEAR_CAP - 1].value).length > 0);
+});
+test("極端組合：有效報酬剛好 -100%，每年只剩當年投入", function(){
+  // 允許範圍內最差的組合：-0.5 + 1 乘以 (-0.5 - 0.3) = -1.3，會低於 -100%
+  assert.ok(C.effectiveReturn(-0.5, 2, 0.3) < -1);
+  assert.strictEqual(C.stepYear(500000, 10000, -1), 10000);
+  assert.strictEqual(C.yearsToTarget(500000, 10000, -1, 1200000), null);
+});
+test("極端組合：月支出極小時目標也極小，現有資產就已達標", function(){
+  assert.strictEqual(C.yearsToTarget(1, 0, 0, C.targetAmount(0.0001, 33)), 0);
+  assert.strictEqual(C.yearsToTarget(0, 0.04, 0, C.targetAmount(0.0001, 33)), 1); // 目標 0.0396
+});
+test("sanitizeState：TWD 模式匯率很小時，合法的台幣金額重新整理後不會被重設", function(){
+  // 匯率 0.01 時，台幣 1 兆換成 EUR 是 100 兆，超過 EUR 上限，但當初是用台幣檢查通過的
+  var saved = { currency: "TWD", rate: 0.01, assetEUR: 1e12 / 0.01, annualEUR: 5e11 / 0.01 };
+  var s = C.sanitizeState(saved);
+  assert.strictEqual(s.assetEUR, 1e14);
+  assert.strictEqual(s.annualEUR, 5e13);
+  // 兩種幣別都超過上限才回預設值
+  var bad = C.sanitizeState({ rate: 36.78, assetEUR: 1e15 });
+  assert.strictEqual(bad.assetEUR, C.defaultState().assetEUR);
+  // 負數不管匯率多少都不收
+  assert.strictEqual(C.sanitizeState({ rate: 0.01, assetEUR: -5 }).assetEUR, C.defaultState().assetEUR);
+});
+test("sanitizeState：怪異的 JSON 不會出錯也不會污染原型", function(){
+  var parsed = JSON.parse('{"__proto__":{"assetEUR":1},"constructor":1,"leverage":"NaN","rate":1e400}');
+  var s = C.sanitizeState(parsed);
+  assert.deepStrictEqual(plain(s), plain(C.defaultState()));
+  assert.strictEqual(({}).assetEUR, undefined);
+  assert.deepStrictEqual(plain(C.sanitizeState([1, 2, 3])), plain(C.defaultState()));
+  assert.strictEqual(C.sanitizeState({ leverage: Infinity }).leverage, 1);
+});
+
 console.log((failed ? "失敗" : "全部通過") + "：" + passed + " 通過，" + failed + " 失敗");
 process.exit(failed ? 1 : 0);
