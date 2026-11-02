@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- 只允許頁面內的樣式與程式，不載入也不連到任何外部資源 -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
 <title>FIRE 計算器（槓桿老師版）</title>
 <style>
 :root{
@@ -37,7 +39,8 @@ body{
   font-family:"Noto Sans TC",-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
   line-height:1.6;
 }
-main{max-width:620px; margin:0 auto; padding:40px 22px calc(140px + env(safe-area-inset-bottom, 0px))}
+/* 每個 env()／clamp() 前面先寫一行不用它的版本，不支援的舊瀏覽器才不會整行失效 */
+main{max-width:620px; margin:0 auto; padding:40px 22px 140px; padding:40px 22px calc(140px + env(safe-area-inset-bottom, 0px))}
 h1{font-size:24px; font-weight:900; margin:0 0 4px; letter-spacing:.02em}
 .lede{color:var(--sub); font-size:13px; margin:0 0 26px}
 section{padding:30px 0 4px}
@@ -116,13 +119,14 @@ input.rate-input{width:70px; font-size:15px; font-weight:700; display:inline-blo
 .bottombar{
   position:fixed; left:0; right:0; bottom:0; z-index:10;
   background:var(--bg); border-top:1px solid var(--line);
+  padding:10px 16px;
   padding:10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
 }
 .bb-inner{max-width:620px; margin:0 auto}
 .bb-row{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
-.bb-main{font-weight:700; font-size:clamp(12px,3.6vw,14px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.bb-years{font-size:clamp(14px,4.2vw,17px); font-weight:900; white-space:nowrap; flex-shrink:0; margin-left:8px}
-.bb-sub{font-size:clamp(11px,2.8vw,12px); color:var(--sub); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.bb-main{font-weight:700; font-size:13px; font-size:clamp(12px,3.6vw,14px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.bb-years{font-size:16px; font-size:clamp(14px,4.2vw,17px); font-weight:900; white-space:nowrap; flex-shrink:0; margin-left:8px}
+.bb-sub{font-size:11px; font-size:clamp(11px,2.8vw,12px); color:var(--sub); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 @media (max-width:460px){ .grid{grid-template-columns:1fr; gap:14px 18px} .slider-val{font-size:28px} }
 </style>
 </head>
@@ -170,7 +174,7 @@ input.rate-input{width:70px; font-size:15px; font-weight:700; display:inline-blo
 
     <div style="margin-top:16px">
       <label for="baseReturn">底層報酬率 <span class="unit">%，0050／QQQ 長期約 10%、全球指數保守 8%、底線 6%</span></label>
-      <input type="number" id="baseReturn" step="0.1" min="-50" max="50" value="8" inputmode="decimal" aria-describedby="baseReturn-err">
+      <input type="number" id="baseReturn" step="0.1" min="-50" max="50" value="8" aria-describedby="baseReturn-err">
       <p class="field-err" id="baseReturn-err" hidden></p>
       <div class="rate-btns" role="group" aria-label="常用報酬率">
         <button type="button" class="rate-btn" data-rate="6" aria-pressed="false" aria-label="底層報酬 6%">6</button>
@@ -470,8 +474,11 @@ input.rate-input{width:70px; font-size:15px; font-weight:700; display:inline-blo
   /**
    * 解析輸入框文字。
    * 回傳 { ok: true, value } 或 { ok: false, error: "錯誤訊息" }
+   * badInput：輸入框的 validity.badInput。瀏覽器看不懂框裡的字（例如打到一半的「1e」、
+   * 用逗號當小數點的「1000,5」）時，value 會是空字串，不能當成「沒填」而默默變成 0。
    */
-  function parseField(raw, rule){
+  function parseField(raw, rule, badInput){
+    if(badInput) return { ok: false, error: "請填一個有效的數字" };
     var s = (raw === null || raw === undefined) ? "" : String(raw).trim();
     if(s === ""){
       if(rule.required) return { ok: false, error: "請填一個數字" };
@@ -520,9 +527,15 @@ input.rate-input{width:70px; font-size:15px; font-weight:700; display:inline-blo
     }
     if(saved.currency === "EUR" || saved.currency === "TWD") s.currency = saved.currency;
     if(inRange(saved.rate, FIELD_RULES.rate)) s.rate = saved.rate;
+    // 金額存的是 EUR，但輸入時是用畫面幣別檢查範圍。在 TWD 模式、匯率很小時，
+    // 合法的台幣金額換成 EUR 可能超過上限，所以 EUR 或台幣其中一邊在範圍內就保留
     [["assetEUR","asset"],["curExpenseEUR","curExpense"],["retireExpenseEUR","retireExpense"],
-     ["lumpEUR","lump"],["annualEUR","annual"],["baseReturn","baseReturn"],["loanRate","loanRate"]].forEach(function(pair){
-      if(inRange(saved[pair[0]], FIELD_RULES[pair[1]])) s[pair[0]] = saved[pair[0]];
+     ["lumpEUR","lump"],["annualEUR","annual"]].forEach(function(pair){
+      var v = saved[pair[0]], rule = FIELD_RULES[pair[1]];
+      if(inRange(v, rule) || (typeof v === "number" && inRange(v * s.rate, rule))) s[pair[0]] = v;
+    });
+    ["baseReturn", "loanRate"].forEach(function(k){
+      if(inRange(saved[k], FIELD_RULES[k])) s[k] = saved[k];
     });
     if(typeof saved.retireTouched === "boolean") s.retireTouched = saved.retireTouched;
     if(typeof saved.leverage === "number" && isFinite(saved.leverage)){
@@ -579,10 +592,13 @@ input.rate-input{width:70px; font-size:15px; font-weight:700; display:inline-blo
     annual: "annualEUR"
   };
 
+  /** NodeList 轉陣列：舊版 Safari（9 以前）與部分 Android WebView 的 NodeList 沒有 forEach */
+  function toArray(list){ return Array.prototype.slice.call(list); }
+
   var els = {
-    ccyButtons: document.querySelectorAll(".mode[data-ccy]"),
-    ccyUnits: document.querySelectorAll("[data-ccy-unit]"),
-    rateButtons: document.querySelectorAll(".rate-btn[data-rate]"),
+    ccyButtons: toArray(document.querySelectorAll(".mode[data-ccy]")),
+    ccyUnits: toArray(document.querySelectorAll("[data-ccy-unit]")),
+    rateButtons: toArray(document.querySelectorAll(".rate-btn[data-rate]")),
     rate: document.getElementById("rate"),
     asset: document.getElementById("asset"),
     curExpense: document.getElementById("curExpense"),
@@ -677,6 +693,12 @@ input.rate-input{width:70px; font-size:15px; font-weight:700; display:inline-blo
     Object.keys(C.FIELD_RULES).forEach(function(id){ setFieldError(id, null); });
   }
 
+  /** 讀某個輸入框並驗證，連同瀏覽器回報的 badInput 一起判斷 */
+  function readField(id){
+    var el = els[id];
+    return C.parseField(el.value, C.FIELD_RULES[id], !!(el.validity && el.validity.badInput));
+  }
+
   function errorCount(){
     return Object.keys(fieldErrors).length;
   }
@@ -706,6 +728,10 @@ input.rate-input{width:70px; font-size:15px; font-weight:700; display:inline-blo
 
   /** 把 store 寫回所有輸入框；skipId 是使用者正在打字的那格，不去動它 */
   function syncInputsFromStore(skipId){
+    // 被覆寫的欄位已換回有效值，原本的錯誤提示要一起清掉，不然畫面數字正常卻還顯示「要修正」
+    Object.keys(C.FIELD_RULES).forEach(function(id){
+      if(id !== skipId) setFieldError(id, null);
+    });
     updateCurrencyUI();
     if(skipId !== "rate") els.rate.value = store.rate;
     Object.keys(AMOUNT_FIELDS).forEach(function(id){
@@ -873,7 +899,7 @@ input.rate-input{width:70px; font-size:15px; font-weight:700; display:inline-blo
     });
 
     els.rate.addEventListener("input", function(){
-      var res = C.parseField(els.rate.value, C.FIELD_RULES.rate);
+      var res = readField("rate");
       if(!res.ok){
         setFieldError("rate", res.error);
         render();
@@ -897,7 +923,7 @@ input.rate-input{width:70px; font-size:15px; font-weight:700; display:inline-blo
     Object.keys(AMOUNT_FIELDS).forEach(function(id){
       els[id].addEventListener("input", function(){
         if(id === "retireExpense") store.retireTouched = true;
-        var res = C.parseField(els[id].value, C.FIELD_RULES[id]);
+        var res = readField(id);
         if(!res.ok){
           setFieldError(id, res.error);
           render();
@@ -917,7 +943,7 @@ input.rate-input{width:70px; font-size:15px; font-weight:700; display:inline-blo
 
     ["baseReturn", "loanRate"].forEach(function(id){
       els[id].addEventListener("input", function(){
-        var res = C.parseField(els[id].value, C.FIELD_RULES[id]);
+        var res = readField(id);
         if(!res.ok){
           setFieldError(id, res.error);
           render();

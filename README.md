@@ -97,6 +97,12 @@ node tests/fire-core.test.js
 - 跟 Python 獨立參考實作比對 500 組案例（`tests/fixtures/reference-cases.json`）。
 - 輸入驗證、格式化、localStorage 清理。
 
+另外有一組畫面層測試，用 Playwright 開 Chromium 實際操作頁面（錯誤提示、極端輸入、localStorage 壞掉或無法使用、375px 寬度、重算速度）。沒裝 Playwright 時會自動略過：
+
+```bash
+node tests/ui.test.js
+```
+
 想重新產生參考案例（需要 Python 3）：
 
 ```bash
@@ -110,6 +116,7 @@ python3 tests/reference.py
 ```
 index.html                         網頁本體（樣式、計算核心、畫面邏輯都在裡面）
 tests/fire-core.test.js            單元測試，純 Node
+tests/ui.test.js                   畫面層測試，需要 Playwright
 tests/reference.py                 Python 獨立參考實作，產生比對案例
 tests/fixtures/reference-cases.json
 docs/                              截圖
