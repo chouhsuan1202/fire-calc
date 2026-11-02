@@ -7,7 +7,10 @@
 <style>
 :root{
   color-scheme: light dark;
-  --bg:#FBFBF9; --ink:#1C201E; --sub:#6B7370; --line:#E3E6E2;
+  /* --sub 從 #6B7370 調深，讓小字在淡色底（結論框）上也達到 4.5:1 */
+  --bg:#FBFBF9; --ink:#1C201E; --sub:#5E6662; --line:#E3E6E2;
+  /* --field：輸入框底線，非文字元件需 3:1 對比（WCAG 1.4.11） */
+  --field:#7E8682;
   --accent:#0E7A5F; --accent-soft:#E7F2EE;
   --warn:#B07818; --warn-soft:#F7EEDC;
   --bad:#B0382E; --bad-soft:#F6E5E3;
@@ -15,6 +18,7 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#171A19; --ink:#ECEEEC; --sub:#98A09C; --line:#2C312E;
+    --field:#6A726E;
     --accent:#4FBF9A; --accent-soft:#1E2E29;
     --warn:#D9A84E; --warn-soft:#2E2818;
     --bad:#E07A6F; --bad-soft:#33201D;
@@ -22,6 +26,7 @@
 }
 :root[data-theme="dark"]{
   --bg:#171A19; --ink:#ECEEEC; --sub:#98A09C; --line:#2C312E;
+  --field:#6A726E;
   --accent:#4FBF9A; --accent-soft:#1E2E29;
   --warn:#D9A84E; --warn-soft:#2E2818;
   --bad:#E07A6F; --bad-soft:#33201D;
@@ -39,17 +44,24 @@ section{padding:30px 0 4px}
 section.first{padding-top:18px}
 .sec-label{font-size:12px; font-weight:700; color:var(--sub); letter-spacing:.14em; margin:0 0 10px}
 .grid{display:grid; grid-template-columns:1fr 1fr; gap:16px 24px}
+.grid > div{min-width:0}
 label{display:block; font-size:13px; font-weight:500; margin-bottom:4px}
 .unit{color:var(--sub); font-weight:400; font-size:12px}
 input[type=number]{
   width:100%; font:inherit; font-size:19px; font-weight:700;
   font-variant-numeric:tabular-nums;
   color:var(--ink); background:transparent;
-  border:none; border-bottom:2px solid var(--line);
+  border:none; border-bottom:2px solid var(--field);
   padding:2px 0 4px; border-radius:0;
 }
-input[type=number]:focus{outline:none; border-bottom-color:var(--accent)}
+/* 焦點：底線變色並加粗，鍵盤使用者看得出目前在哪一格 */
+input[type=number]:focus{outline:none; border-bottom-color:var(--accent); box-shadow:0 1px 0 0 var(--accent)}
+input[type=number][aria-invalid="true"]{border-bottom-color:var(--bad)}
+input[type=number][aria-invalid="true"]:focus{box-shadow:0 1px 0 0 var(--bad)}
+.field-err{margin:4px 0 0; font-size:12px; font-weight:500; color:var(--bad)}
+.field-err[hidden]{display:none}
 .slider-row{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:6px}
+.slider-row label{font-size:inherit; font-weight:inherit; margin:0}
 .slider-val{font-size:34px; font-weight:900; font-variant-numeric:tabular-nums}
 input[type=range]{width:100%; margin:10px 0 2px; accent-color:var(--accent); height:28px}
 input[type=range]:focus-visible{outline:2px solid var(--accent); outline-offset:4px}
@@ -73,12 +85,13 @@ td:last-child{text-align:right; font-weight:700; font-variant-numeric:tabular-nu
 td .small{display:block; font-size:12px; color:var(--sub); font-weight:400; white-space:normal}
 table.wide{table-layout:auto}
 table.wide td:first-child{width:auto}
+/* 老師說明表只有一欄文字，讓它吃滿寬度 */
+table.notes td:first-child{width:auto; text-align:left; font-weight:400; white-space:normal; padding-left:0}
 th{font-size:12px; font-weight:700; color:var(--sub); text-align:left; padding:9px 0; border-bottom:1px dashed var(--line)}
 th:last-child{text-align:right}
-.small-link{font-size:12px; color:var(--accent); font-weight:700; text-decoration:underline; text-underline-offset:2px; cursor:pointer}
-button.small-link{background:none; border:none; padding:0; font:inherit; margin-right:10px}
 details{margin:20px 0; border-top:1px solid var(--line); padding-top:16px}
 summary{cursor:pointer; font-size:15px; font-weight:700; color:var(--ink); padding:4px 0}
+summary:focus-visible{outline:2px solid var(--accent); outline-offset:3px}
 .fine{font-size:12px; color:var(--sub); margin-top:26px; border-top:1px solid var(--line); padding-top:14px}
 .sig{font-size:12px; color:var(--sub); text-align:center; margin-top:20px; letter-spacing:.08em}
 .modes{display:flex; gap:22px; border-bottom:1px solid var(--line)}
@@ -86,18 +99,20 @@ summary{cursor:pointer; font-size:15px; font-weight:700; color:var(--ink); paddi
   background:none; border:none; padding:8px 2px 10px; font:inherit; font-size:15px; font-weight:700;
   color:var(--sub); cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-1px;
 }
-.mode[aria-selected="true"]{color:var(--ink); border-bottom-color:var(--accent)}
+.mode[aria-pressed="true"]{color:var(--ink); border-bottom-color:var(--accent)}
 .mode:focus-visible{outline:2px solid var(--accent); outline-offset:3px}
 .ccy-row{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap}
-.rate-inline{font-size:13px; font-weight:500; white-space:nowrap}
-.rate-input{width:70px; font-size:15px; font-weight:700; display:inline-block; margin:0 4px; padding:2px 0 3px}
-.hidden-radio{display:none}
+.rate-inline{font-size:13px; font-weight:500}
+.rate-inline label{display:inline; margin:0}
+/* 用 input.rate-input 提高權重，原本被 input[type=number] 的 width:100% 蓋掉，造成橫向捲動 */
+input.rate-input{width:70px; font-size:15px; font-weight:700; display:inline-block; margin:0 4px; padding:2px 0 3px}
 .rate-btns{display:flex; gap:8px; margin-top:8px}
 .rate-btn{
   min-height:32px; padding:0 12px; border-radius:6px; border:1px solid var(--line);
   background:none; font:inherit; font-size:14px; color:var(--ink); cursor:pointer;
 }
-.rate-btn.active{background:var(--accent-soft); color:var(--accent); font-weight:700}
+.rate-btn[aria-pressed="true"]{background:var(--accent-soft); color:var(--accent); font-weight:700}
+.rate-btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 .bottombar{
   position:fixed; left:0; right:0; bottom:0; z-index:10;
   background:var(--bg); border-top:1px solid var(--line);
@@ -107,7 +122,7 @@ summary{cursor:pointer; font-size:15px; font-weight:700; color:var(--ink); paddi
 .bb-row{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
 .bb-main{font-weight:700; font-size:clamp(12px,3.6vw,14px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .bb-years{font-size:clamp(14px,4.2vw,17px); font-weight:900; white-space:nowrap; flex-shrink:0; margin-left:8px}
-.bb-sub{font-size:clamp(10px,2.8vw,11px); color:var(--sub); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.bb-sub{font-size:clamp(11px,2.8vw,12px); color:var(--sub); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 @media (max-width:460px){ .grid{grid-template-columns:1fr; gap:14px 18px} .slider-val{font-size:28px} }
 </style>
 </head>
@@ -116,47 +131,51 @@ summary{cursor:pointer; font-size:15px; font-weight:700; color:var(--ink); paddi
   <h1>FIRE 要存多少、幾年到</h1>
   <p class="lede">六位槓桿老師的算法放在一起，填六個數字就看到</p>
 
-  <section class="first">
-    <p class="sec-label">你的數字</p>
+  <section class="first" aria-labelledby="secInput">
+    <h2 class="sec-label" id="secInput">你的數字</h2>
 
     <div class="ccy-row">
-      <div class="modes" role="tablist">
-        <button type="button" class="mode" id="tabEUR" role="tab" aria-selected="true">EUR</button>
-        <button type="button" class="mode" id="tabTWD" role="tab" aria-selected="false">TWD</button>
+      <div class="modes" role="group" aria-label="顯示幣別">
+        <button type="button" class="mode" id="tabEUR" data-ccy="EUR" aria-pressed="true">EUR</button>
+        <button type="button" class="mode" id="tabTWD" data-ccy="TWD" aria-pressed="false">TWD</button>
       </div>
       <div class="rate-inline">
-        <label for="rate" style="display:inline; margin:0">1 EUR = <input type="number" id="rate" step="0.01" value="36.78" class="rate-input"> TWD</label>
+        <label for="rate">1 EUR = <input type="number" id="rate" step="0.01" min="0" value="36.78" class="rate-input" inputmode="decimal" aria-describedby="rate-err"> TWD</label>
+        <p class="field-err" id="rate-err" hidden></p>
       </div>
     </div>
-    <input type="radio" name="currency" value="EUR" checked class="hidden-radio">
-    <input type="radio" name="currency" value="TWD" class="hidden-radio">
 
     <div class="grid" style="margin-top:16px">
       <div>
-        <label for="asset">現有投資資產</label>
-        <input type="number" id="asset" step="1" value="200000">
+        <label for="asset">現有投資資產 <span class="unit" data-ccy-unit>EUR</span></label>
+        <input type="number" id="asset" step="1" min="0" value="200000" inputmode="decimal" aria-describedby="asset-err">
+        <p class="field-err" id="asset-err" hidden></p>
       </div>
       <div>
-        <label for="curExpense">現在每月支出</label>
-        <input type="number" id="curExpense" step="1" value="4000">
+        <label for="curExpense">現在每月支出 <span class="unit" data-ccy-unit>EUR</span></label>
+        <input type="number" id="curExpense" step="1" min="0" value="4000" inputmode="decimal" aria-describedby="curExpense-err">
+        <p class="field-err" id="curExpense-err" hidden></p>
       </div>
       <div>
-        <label for="retireExpense">退休後每月支出 <span class="unit">不確定就跟現在一樣</span></label>
-        <input type="number" id="retireExpense" step="1" value="4000">
+        <label for="retireExpense">退休後每月支出 <span class="unit"><span data-ccy-unit>EUR</span>，不確定就跟現在一樣</span></label>
+        <input type="number" id="retireExpense" step="1" min="0" value="4000" inputmode="decimal" aria-describedby="retireExpense-err">
+        <p class="field-err" id="retireExpense-err" hidden></p>
       </div>
       <div>
-        <label for="annual">每年再投入 <span class="unit">不投填 0</span></label>
-        <input type="number" id="annual" step="1" value="10000">
+        <label for="annual">每年再投入 <span class="unit"><span data-ccy-unit>EUR</span>，不投填 0</span></label>
+        <input type="number" id="annual" step="1" min="0" value="10000" inputmode="decimal" aria-describedby="annual-err">
+        <p class="field-err" id="annual-err" hidden></p>
       </div>
     </div>
 
     <div style="margin-top:16px">
       <label for="baseReturn">底層報酬率 <span class="unit">%，0050／QQQ 長期約 10%、全球指數保守 8%、底線 6%</span></label>
-      <input type="number" id="baseReturn" step="0.1" value="8">
-      <div class="rate-btns">
-        <button type="button" class="rate-btn" data-rate="6">6</button>
-        <button type="button" class="rate-btn" data-rate="8">8</button>
-        <button type="button" class="rate-btn" data-rate="10">10</button>
+      <input type="number" id="baseReturn" step="0.1" min="-50" max="50" value="8" inputmode="decimal" aria-describedby="baseReturn-err">
+      <p class="field-err" id="baseReturn-err" hidden></p>
+      <div class="rate-btns" role="group" aria-label="常用報酬率">
+        <button type="button" class="rate-btn" data-rate="6" aria-pressed="false" aria-label="底層報酬 6%">6</button>
+        <button type="button" class="rate-btn" data-rate="8" aria-pressed="false" aria-label="底層報酬 8%">8</button>
+        <button type="button" class="rate-btn" data-rate="10" aria-pressed="false" aria-label="底層報酬 10%">10</button>
       </div>
     </div>
 
@@ -166,63 +185,65 @@ summary{cursor:pointer; font-size:15px; font-weight:700; color:var(--ink); paddi
       <summary>進階：槓桿與一次投入</summary>
       <div class="grid" style="margin-top:14px">
         <div>
-          <label for="lump">一次投入 <span class="unit">例如增貸進場的一筆錢</span></label>
-          <input type="number" id="lump" step="1" value="0">
+          <label for="lump">一次投入 <span class="unit"><span data-ccy-unit>EUR</span>，例如增貸進場的一筆錢</span></label>
+          <input type="number" id="lump" step="1" min="0" value="0" inputmode="decimal" aria-describedby="lump-err">
+          <p class="field-err" id="lump-err" hidden></p>
         </div>
         <div>
           <label for="loanRate">借款利率 <span class="unit">%</span></label>
-          <input type="number" id="loanRate" step="0.1" value="4">
+          <input type="number" id="loanRate" step="0.1" min="0" max="30" value="4" inputmode="decimal" aria-describedby="loanRate-err">
+          <p class="field-err" id="loanRate-err" hidden></p>
         </div>
       </div>
       <div style="margin-top:22px">
         <div class="slider-row">
-          <span>槓桿倍數</span>
-          <span class="slider-val" id="leverageValue">1.0</span>
+          <label for="leverage">槓桿倍數</label>
+          <span class="slider-val" id="leverageValue" aria-hidden="true">1.0</span>
         </div>
-        <input type="range" id="leverage" min="1" max="2" step="0.1" value="1.0">
-        <div class="range-ends"><span>1.0（不借）</span><span>2.0</span></div>
+        <input type="range" id="leverage" min="1" max="2" step="0.1" value="1.0" aria-valuetext="1.0 倍">
+        <div class="range-ends" aria-hidden="true"><span>1.0（不借）</span><span>2.0</span></div>
       </div>
       <p class="formula-line">有效報酬 = 底層報酬 + (槓桿倍數 減 1) 乘以 (底層報酬 減 借款利率)</p>
       <p class="formula-line">清流君算過每日重置的正二長期只約原型的 1.55 倍，這裡的槓桿是有效曝險。</p>
     </details>
   </section>
 
-  <section>
-    <p class="sec-label">要存到多少、幾年到</p>
-    <div class="verdict ok" id="verdict">
+  <section aria-labelledby="secResult">
+    <h2 class="sec-label" id="secResult">要存到多少、幾年到</h2>
+    <div class="verdict ok" id="verdict" aria-live="polite" aria-atomic="true">
       <span class="word" id="vWord"></span>
       <span class="why" id="vWhy"></span>
     </div>
     <div class="tbl-wrap">
-      <table id="table1"><tbody></tbody></table>
+      <table id="table1" aria-labelledby="secResult"><tbody></tbody></table>
     </div>
   </section>
 
   <details>
     <summary>這些老師是誰、倍數怎麼來</summary>
     <div class="tbl-wrap">
-      <table>
+      <table class="notes">
         <tbody>
-          <tr><td>清流君<span class="small">4% 法則（25 倍）是用最壞情境反推的下限，他真正推的是動態提領（Guyton-Klinger 護欄），全股票大約 6% 起始，算下來約 17 倍。</span></td><td></td></tr>
-          <tr><td>YP<span class="small">4% 法則只是歷史回測的框架不是保證，退休真正的殺手是報酬順序風險，退休前後五年遇大跌最危險。</span></td><td></td></tr>
-          <tr><td>CLEC<span class="small">2026 年改口 15 倍是最低門檻、17 倍加安全邊際，33 倍以上可以提 3% 不必靠高股息。退休金、勞保這種固定收入可以先從年支出扣掉再乘倍數。</span></td><td></td></tr>
-          <tr><td>共同<span class="small">退休後花多少，比報酬率更影響年數；本金已經在滾的話，每年多投一點影響不大，時間才是主角。</span></td><td></td></tr>
+          <tr><td>清流君<span class="small">4% 法則（25 倍）是用最壞情境反推的下限，他真正推的是動態提領（Guyton-Klinger 護欄），全股票大約 6% 起始，算下來約 17 倍。</span></td></tr>
+          <tr><td>YP<span class="small">4% 法則只是歷史回測的框架不是保證，退休真正的殺手是報酬順序風險，退休前後五年遇大跌最危險。</span></td></tr>
+          <tr><td>CLEC<span class="small">2026 年改口 15 倍是最低門檻、17 倍加安全邊際，33 倍以上可以提 3% 不必靠高股息。退休金、勞保這種固定收入可以先從年支出扣掉再乘倍數。</span></td></tr>
+          <tr><td>共同<span class="small">退休後花多少，比報酬率更影響年數；本金已經在滾的話，每年多投一點影響不大，時間才是主角。</span></td></tr>
         </tbody>
       </table>
     </div>
   </details>
 
-  <section>
-    <p class="sec-label">什麼最影響年數（以 25 倍為準）</p>
+  <section aria-labelledby="secSens">
+    <h2 class="sec-label" id="secSens">什麼最影響年數（以 25 倍為準）</h2>
     <div class="tbl-wrap">
-      <table id="table3"><tbody></tbody></table>
+      <table id="table3" aria-labelledby="secSens"><tbody></tbody></table>
     </div>
   </section>
 
-  <section>
-    <p class="sec-label">報酬率換一下會差幾年</p>
+  <section aria-labelledby="secRates">
+    <h2 class="sec-label" id="secRates">報酬率換一下會差幾年</h2>
     <div class="tbl-wrap">
-      <table id="table2" class="wide">
+      <table id="table2" class="wide" aria-labelledby="secRates">
         <thead><tr id="table2Head"></tr></thead>
         <tbody></tbody>
       </table>
@@ -232,9 +253,9 @@ summary{cursor:pointer; font-size:15px; font-weight:700; color:var(--ink); paddi
   <details id="yearlyDetails">
     <summary>逐年資產</summary>
     <div class="tbl-wrap">
-      <table id="table4" class="wide">
+      <table id="table4" class="wide" aria-label="逐年資產">
         <thead>
-          <tr><th>第幾年</th><th>西元年</th><th>資產</th><th>跨過哪個倍數</th></tr>
+          <tr><th scope="col">第幾年</th><th scope="col">西元年</th><th scope="col">資產</th><th scope="col">跨過哪個倍數</th></tr>
         </thead>
         <tbody></tbody>
       </table>
@@ -245,7 +266,7 @@ summary{cursor:pointer; font-size:15px; font-weight:700; color:var(--ink); paddi
   <p class="sig">槓桿老師知識庫 · 2026</p>
 </main>
 
-<div class="bottombar" id="bottomBar">
+<aside class="bottombar" id="bottomBar" aria-label="結果摘要">
   <div class="bb-inner">
     <div class="bb-row">
       <span class="bb-main" id="bbMain">25 倍 要存到 0 EUR</span>
@@ -253,26 +274,315 @@ summary{cursor:pointer; font-size:15px; font-weight:700; color:var(--ink); paddi
     </div>
     <div class="bb-sub" id="bbSub">17 倍 0，0 年</div>
   </div>
-</div>
+</aside>
 
+<!--
+  計算核心：只有純函式，不碰 DOM。
+  瀏覽器裡會掛在 window.FireCore；tests/fire-core.test.js 會把這段 script 抽出來在 Node 裡跑。
+-->
+<script id="fire-core">
+(function(root){
+  "use strict";
+
+  /** 年數模擬的上限，超過就顯示「60 年以上」 */
+  var YEAR_CAP = 60;
+
+  /** 比較「資產是否達標」時的相對容忍度，避免浮點誤差讓剛好達標的那年被算成沒到 */
+  var REL_EPSILON = 1e-9;
+
+  /** 四種提領倍數：目標金額 = 退休後年支出 乘以 倍數 */
+  var MULTIPLES = [
+    { key: "15", label: "CLEC 最低 15 倍", mult: 15 },
+    { key: "17", label: "清流君動態提領約 17 倍", mult: 17 },
+    { key: "25", label: "清流君 4% 法則 25 倍", mult: 25 },
+    { key: "33", label: "CLEC 保守 33 倍（提 3%）", mult: 33 }
+  ];
+
+  /** 「報酬率換一下」表格用的底層報酬率 */
+  var TABLE2_RATES = [0.06, 0.08, 0.10, 0.12];
+
+  /** 預設匯率：1 EUR 兌多少 TWD */
+  var DEFAULT_RATE = 36.78;
+
+  /** 槓桿滑桿範圍 */
+  var LEVERAGE_MIN = 1.0;
+  var LEVERAGE_MAX = 2.0;
+
+  /**
+   * 各欄位的驗證規則
+   * required：空白時是否算錯；空白且非必填就當 0
+   * min／max：允許範圍；minExclusive 代表必須大於 min
+   */
+  var FIELD_RULES = {
+    rate:          { required: true,  min: 0,   minExclusive: true, max: 100000 },
+    asset:         { required: false, min: 0,   max: 1e13 },
+    curExpense:    { required: true,  min: 0,   minExclusive: true, max: 1e11 },
+    retireExpense: { required: true,  min: 0,   minExclusive: true, max: 1e11 },
+    annual:        { required: false, min: 0,   max: 1e12 },
+    lump:          { required: false, min: 0,   max: 1e13 },
+    baseReturn:    { required: true,  min: -50, max: 50 },
+    loanRate:      { required: true,  min: 0,   max: 30 }
+  };
+
+  /**
+   * 有效報酬（槓桿後，對自有資金的年報酬）
+   * = 底層報酬 + (槓桿倍數 - 1) 乘以 (底層報酬 - 借款利率)
+   * 等同 L 乘以 r 減去 (L - 1) 乘以 i。全部用小數，例如 8% 傳 0.08。
+   */
+  function effectiveReturn(r, leverage, loanRate){
+    return r + (leverage - 1) * (r - loanRate);
+  }
+
+  /** 目標金額 = 每月支出 乘以 12 乘以 倍數 */
+  function targetAmount(monthlyExpense, mult){
+    return monthlyExpense * 12 * mult;
+  }
+
+  /** 資產是否已達標（含浮點容忍度） */
+  function hasReached(value, target){
+    return value >= target - REL_EPSILON * Math.max(1, Math.abs(target));
+  }
+
+  /**
+   * 過一年：先用有效報酬滾一年，年底再投入 annual。
+   * 有效報酬低於 -100% 時（高槓桿遇大跌）資產最多歸零，不會變成負數再翻正。
+   */
+  function stepYear(value, annual, eff){
+    return Math.max(0, value * (1 + eff)) + annual;
+  }
+
+  /**
+   * 幾年後資產會達到 target。
+   * 已經達標回傳 0；超過 cap 年還到不了回傳 null。
+   */
+  function yearsToTarget(startValue, annual, eff, target, cap){
+    if(cap === undefined) cap = YEAR_CAP;
+    if(hasReached(startValue, target)) return 0;
+    var v = startValue;
+    for(var n = 1; n <= cap; n++){
+      v = stepYear(v, annual, eff);
+      if(hasReached(v, target)) return n;
+    }
+    return null;
+  }
+
+  /**
+   * 逐年資產表。
+   * targets：[{ mult, target }]；回傳每年的資產與當年新跨過的倍數。
+   * 至少列 minYears 年；全部倍數都跨過後就停，最多 cap 年。
+   * startCrossed：第 0 年（現在）就已經達標的倍數。
+   */
+  function projectYears(startValue, annual, eff, targets, minYears, cap){
+    if(minYears === undefined) minYears = 30;
+    if(cap === undefined) cap = YEAR_CAP;
+    var sorted = targets.slice().sort(function(a, b){ return a.mult - b.mult; });
+    var crossed = {};
+    var startCrossed = [];
+    sorted.forEach(function(t){
+      if(hasReached(startValue, t.target)){
+        crossed[t.mult] = true;
+        startCrossed.push(t.mult);
+      }
+    });
+    var rows = [];
+    var v = startValue;
+    for(var n = 1; n <= cap; n++){
+      v = stepYear(v, annual, eff);
+      var newly = [];
+      sorted.forEach(function(t){
+        if(!crossed[t.mult] && hasReached(v, t.target)){
+          crossed[t.mult] = true;
+          newly.push(t.mult);
+        }
+      });
+      rows.push({ year: n, value: v, crossed: newly });
+      var allCrossed = sorted.every(function(t){ return crossed[t.mult]; });
+      if(n >= minYears && allCrossed) break;
+    }
+    return { startCrossed: startCrossed, rows: rows };
+  }
+
+  /**
+   * 敏感度分析（以 25 倍為準）。金額單位一律 EUR。
+   * p：{ r, i, L, startValue, annual, retireExpense }，extraAnnual：「每年多投入」的金額
+   */
+  function sensitivity(p, extraAnnual){
+    var eff = effectiveReturn(p.r, p.L, p.i);
+    var target = targetAmount(p.retireExpense, 25);
+    return [
+      { key: "base",    years: yearsToTarget(p.startValue, p.annual, eff, target) },
+      { key: "expense", years: yearsToTarget(p.startValue, p.annual, eff, targetAmount(p.retireExpense * 0.8, 25)) },
+      { key: "return",  years: yearsToTarget(p.startValue, p.annual, effectiveReturn(p.r + 0.02, p.L, p.i), target) },
+      { key: "annual",  years: yearsToTarget(p.startValue, p.annual + extraAnnual, eff, target) }
+    ];
+  }
+
+  /** 跟目前設定比差幾年的文字 */
+  function diffText(baseYears, years){
+    if(years === null || baseYears === null) return "無法比較";
+    var diff = years - baseYears;
+    if(diff === 0) return "跟現在沒差";
+    return diff > 0 ? "比現在多 " + diff + " 年" : "比現在少 " + (-diff) + " 年";
+  }
+
+  /** EUR 金額換成畫面幣別 */
+  function toDisplay(amountEUR, currency, rate){
+    return currency === "TWD" ? amountEUR * rate : amountEUR;
+  }
+  /** EUR 金額換成另一個幣別（對照用） */
+  function toOther(amountEUR, currency, rate){
+    return currency === "TWD" ? amountEUR : amountEUR * rate;
+  }
+  /** 畫面幣別的金額換回 EUR */
+  function fromDisplay(amount, currency, rate){
+    return currency === "TWD" ? amount / rate : amount;
+  }
+
+  /** 金額取整數加千分位；避免出現「-0」 */
+  function formatAmount(n){
+    var v = Math.round(n);
+    if(v === 0) v = 0;
+    return v.toLocaleString("en-US");
+  }
+  /** 小數轉百分比，一位小數，例如 0.08 變成「8.0%」 */
+  function formatPercent(frac){
+    var v = Math.round(frac * 1000) / 10;
+    if(v === 0) v = 0;
+    return v.toFixed(1) + "%";
+  }
+  /** 年數文字：null 代表超過上限 */
+  function formatYears(y){
+    if(y === null) return YEAR_CAP + " 年以上";
+    if(y === 0) return "已達標";
+    return y + " 年";
+  }
+  /** 「X 年到」的版本，用在結論句與底部列 */
+  function formatYearsTo(y){
+    if(y === 0) return "已經達標";
+    return formatYears(y) + "到";
+  }
+
+  /** 四捨五入到小數兩位（顯示在輸入框用） */
+  function round2(n){
+    return Math.round(n * 100) / 100;
+  }
+
+  /**
+   * 解析輸入框文字。
+   * 回傳 { ok: true, value } 或 { ok: false, error: "錯誤訊息" }
+   */
+  function parseField(raw, rule){
+    var s = (raw === null || raw === undefined) ? "" : String(raw).trim();
+    if(s === ""){
+      if(rule.required) return { ok: false, error: "請填一個數字" };
+      return { ok: true, value: 0 };
+    }
+    var v = Number(s);
+    if(!isFinite(v)) return { ok: false, error: "請填一個有效的數字" };
+    if(rule.minExclusive ? v <= rule.min : v < rule.min){
+      if(rule.min === 0) return { ok: false, error: rule.minExclusive ? "要大於 0" : "不能是負數" };
+      return { ok: false, error: "最低 " + rule.min };
+    }
+    if(rule.max !== undefined && v > rule.max){
+      return { ok: false, error: "最高 " + rule.max.toLocaleString("en-US") };
+    }
+    return { ok: true, value: v };
+  }
+
+  /** 預設值；內部金額一律以 EUR 記帳 */
+  function defaultState(){
+    return {
+      currency: "EUR",
+      rate: DEFAULT_RATE,
+      assetEUR: 200000,
+      curExpenseEUR: 4000,
+      retireExpenseEUR: 4000,
+      retireTouched: false,
+      lumpEUR: 0,
+      annualEUR: 10000,
+      baseReturn: 8,
+      leverage: 1.0,
+      loanRate: 4
+    };
+  }
+
+  /**
+   * 把 localStorage 讀到的東西清乾淨：型別不對、超出範圍就回預設值。
+   * 槓桿會夾在 1.0 到 2.0 之間，跟滑桿一致。
+   */
+  function sanitizeState(saved){
+    var s = defaultState();
+    if(!saved || typeof saved !== "object") return s;
+    function inRange(v, rule){
+      return typeof v === "number" && isFinite(v) &&
+        (rule.minExclusive ? v > rule.min : v >= rule.min) &&
+        (rule.max === undefined || v <= rule.max);
+    }
+    if(saved.currency === "EUR" || saved.currency === "TWD") s.currency = saved.currency;
+    if(inRange(saved.rate, FIELD_RULES.rate)) s.rate = saved.rate;
+    [["assetEUR","asset"],["curExpenseEUR","curExpense"],["retireExpenseEUR","retireExpense"],
+     ["lumpEUR","lump"],["annualEUR","annual"],["baseReturn","baseReturn"],["loanRate","loanRate"]].forEach(function(pair){
+      if(inRange(saved[pair[0]], FIELD_RULES[pair[1]])) s[pair[0]] = saved[pair[0]];
+    });
+    if(typeof saved.retireTouched === "boolean") s.retireTouched = saved.retireTouched;
+    if(typeof saved.leverage === "number" && isFinite(saved.leverage)){
+      s.leverage = Math.min(LEVERAGE_MAX, Math.max(LEVERAGE_MIN, Math.round(saved.leverage * 10) / 10));
+    }
+    return s;
+  }
+
+  root.FireCore = {
+    YEAR_CAP: YEAR_CAP,
+    MULTIPLES: MULTIPLES,
+    TABLE2_RATES: TABLE2_RATES,
+    DEFAULT_RATE: DEFAULT_RATE,
+    LEVERAGE_MIN: LEVERAGE_MIN,
+    LEVERAGE_MAX: LEVERAGE_MAX,
+    FIELD_RULES: FIELD_RULES,
+    effectiveReturn: effectiveReturn,
+    targetAmount: targetAmount,
+    hasReached: hasReached,
+    stepYear: stepYear,
+    yearsToTarget: yearsToTarget,
+    projectYears: projectYears,
+    sensitivity: sensitivity,
+    diffText: diffText,
+    toDisplay: toDisplay,
+    toOther: toOther,
+    fromDisplay: fromDisplay,
+    formatAmount: formatAmount,
+    formatPercent: formatPercent,
+    formatYears: formatYears,
+    formatYearsTo: formatYearsTo,
+    round2: round2,
+    parseField: parseField,
+    defaultState: defaultState,
+    sanitizeState: sanitizeState
+  };
+})(typeof window !== "undefined" ? window : globalThis);
+</script>
+
+<!-- 畫面層：讀輸入、呼叫 FireCore、更新 DOM -->
 <script>
 (function(){
   "use strict";
 
+  var C = window.FireCore;
   var STORAGE_KEY = "fireCalcLeverage";
-  var MULTIPLES = [
-    { key: "15", label: "CLEC 最低 15 倍", mult: 15, bold: false },
-    { key: "17", label: "清流君動態提領約 17 倍", mult: 17, bold: false },
-    { key: "25", label: "清流君 4% 法則 25 倍", mult: 25, bold: true },
-    { key: "33", label: "CLEC 保守 33 倍（提 3%）", mult: 33, bold: false }
-  ];
-  var TABLE2_RATES = [0.06, 0.08, 0.10, 0.12];
-  var YEAR_CAP = 60;
+
+  /** 金額類欄位：輸入框 id 對應到 store 裡的 EUR 欄位 */
+  var AMOUNT_FIELDS = {
+    asset: "assetEUR",
+    curExpense: "curExpenseEUR",
+    retireExpense: "retireExpenseEUR",
+    lump: "lumpEUR",
+    annual: "annualEUR"
+  };
 
   var els = {
-    currencyRadios: document.querySelectorAll('input[name="currency"]'),
-    tabEUR: document.getElementById("tabEUR"),
-    tabTWD: document.getElementById("tabTWD"),
+    ccyButtons: document.querySelectorAll(".mode[data-ccy]"),
+    ccyUnits: document.querySelectorAll("[data-ccy-unit]"),
+    rateButtons: document.querySelectorAll(".rate-btn[data-rate]"),
     rate: document.getElementById("rate"),
     asset: document.getElementById("asset"),
     curExpense: document.getElementById("curExpense"),
@@ -299,140 +609,127 @@ summary{cursor:pointer; font-size:15px; font-weight:700; color:var(--ink); paddi
     table4Body: document.querySelector("#table4 tbody")
   };
 
-  // 內部一律以 EUR 記帳，畫面依所選幣別顯示
-  var store = {
-    currency: "EUR",
-    rate: 36.78,
-    assetEUR: 200000,
-    curExpenseEUR: 4000,
-    retireExpenseEUR: 4000,
-    retireTouched: false,
-    lumpEUR: 0,
-    annualEUR: 10000,
-    baseReturn: 8,
-    leverage: 1.0,
-    loanRate: 4
-  };
+  var store = C.defaultState();
+
+  /** 目前有錯的欄位 id；有錯時保留上一個有效值來計算 */
+  var fieldErrors = {};
 
   function loadStorage(){
+    var saved = null;
     try{
       var raw = localStorage.getItem(STORAGE_KEY);
-      if(!raw) return;
-      var saved = JSON.parse(raw);
-      Object.keys(store).forEach(function(k){
-        if(saved.hasOwnProperty(k)) store[k] = saved[k];
-      });
+      if(raw) saved = JSON.parse(raw);
     }catch(e){
-      // 忽略存取失敗，直接用預設值
+      // 讀不到或格式壞掉就用預設值
     }
-  }
-
-  function sanitizeStore(){
-    if(!(typeof store.rate === "number" && store.rate > 0)) store.rate = 36.78;
-    if(!(typeof store.leverage === "number") || isNaN(store.leverage)) store.leverage = 1.0;
-    store.leverage = Math.max(1.0, store.leverage);
-    ["assetEUR","curExpenseEUR","retireExpenseEUR","lumpEUR","annualEUR","baseReturn","loanRate"].forEach(function(k){
-      if(typeof store[k] !== "number" || isNaN(store[k])) store[k] = 0;
-    });
+    store = C.sanitizeState(saved);
   }
 
   function saveStorage(){
     try{
       localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
     }catch(e){
-      // 忽略寫入失敗
+      // 無痕模式等情況寫不進去，忽略
     }
   }
 
-  function toDisplay(amountEUR){
-    return store.currency === "TWD" ? amountEUR * store.rate : amountEUR;
-  }
-  function toOtherDisplay(amountEUR){
-    return store.currency === "TWD" ? amountEUR : amountEUR * store.rate;
-  }
-  function fromDisplay(amountDisplay){
-    return store.currency === "TWD" ? amountDisplay / store.rate : amountDisplay;
-  }
+  function disp(amountEUR){ return C.toDisplay(amountEUR, store.currency, store.rate); }
+  function other(amountEUR){ return C.toOther(amountEUR, store.currency, store.rate); }
+  function undisp(amount){ return C.fromDisplay(amount, store.currency, store.rate); }
 
-  function fmt(n){
-    return Math.round(n).toLocaleString("en-US");
-  }
-  function fmtPct(n){
-    return (Math.round(n * 1000) / 10).toFixed(1) + "%";
-  }
-
-  function effReturn(r, L, i){
-    return r + (L - 1) * (r - i);
-  }
-
-  function yearsToTarget(V0, annual, eff, target){
-    if(V0 >= target) return 0;
-    var V = V0;
-    for(var n = 1; n <= YEAR_CAP; n++){
-      V = V * (1 + eff) + annual;
-      if(V >= target) return n;
-    }
-    return null; // 超過上限
-  }
-
-  function fmtYears(y){
-    return y === null ? (YEAR_CAP + " 年以上") : (y + " 年");
-  }
-
+  /** 計算用參數（報酬率轉成小數） */
   function currentParams(){
     var r = store.baseReturn / 100;
     var i = store.loanRate / 100;
     var L = store.leverage;
-    var eff = effReturn(r, L, i);
-    var V0 = store.assetEUR + store.lumpEUR;
-    return { r: r, i: i, L: L, eff: eff, V0: V0, annual: store.annualEUR };
+    return {
+      r: r, i: i, L: L,
+      eff: C.effectiveReturn(r, L, i),
+      startValue: store.assetEUR + store.lumpEUR,
+      annual: store.annualEUR,
+      retireExpense: store.retireExpenseEUR
+    };
   }
 
-  function updateCurrencyTabs(){
-    els.tabEUR.setAttribute("aria-selected", store.currency === "EUR" ? "true" : "false");
-    els.tabTWD.setAttribute("aria-selected", store.currency === "TWD" ? "true" : "false");
+  function targetFor(mult){
+    return C.targetAmount(store.retireExpenseEUR, mult);
+  }
+
+  // ---------- 錯誤提示 ----------
+
+  function setFieldError(id, message){
+    var input = els[id];
+    var errEl = document.getElementById(id + "-err");
+    if(message){
+      fieldErrors[id] = true;
+      input.setAttribute("aria-invalid", "true");
+      errEl.textContent = message;
+      errEl.hidden = false;
+    }else{
+      delete fieldErrors[id];
+      input.removeAttribute("aria-invalid");
+      errEl.textContent = "";
+      errEl.hidden = true;
+    }
+  }
+
+  function clearAllErrors(){
+    Object.keys(C.FIELD_RULES).forEach(function(id){ setFieldError(id, null); });
+  }
+
+  function errorCount(){
+    return Object.keys(fieldErrors).length;
+  }
+
+  // ---------- 同步輸入框 ----------
+
+  function updateCurrencyUI(){
+    els.ccyButtons.forEach(function(btn){
+      btn.setAttribute("aria-pressed", btn.getAttribute("data-ccy") === store.currency ? "true" : "false");
+    });
+    els.ccyUnits.forEach(function(el){ el.textContent = store.currency; });
   }
 
   function updateRateButtons(){
-    document.querySelectorAll(".rate-btn").forEach(function(btn){
+    els.rateButtons.forEach(function(btn){
       var v = parseFloat(btn.getAttribute("data-rate"));
-      btn.classList.toggle("active", v === store.baseReturn);
+      btn.setAttribute("aria-pressed", v === store.baseReturn ? "true" : "false");
     });
   }
 
-  function syncInputsFromStore(){
-    document.querySelectorAll('input[name="currency"]').forEach(function(radio){
-      radio.checked = (radio.value === store.currency);
-    });
-    updateCurrencyTabs();
-    els.rate.value = store.rate;
-    els.asset.value = round2(toDisplay(store.assetEUR));
-    els.curExpense.value = round2(toDisplay(store.curExpenseEUR));
-    els.retireExpense.value = round2(toDisplay(store.retireExpenseEUR));
-    els.lump.value = round2(toDisplay(store.lumpEUR));
-    els.annual.value = round2(toDisplay(store.annualEUR));
-    els.baseReturn.value = store.baseReturn;
+  function updateLeverageUI(){
+    var text = Number(store.leverage).toFixed(1);
     els.leverage.value = store.leverage;
-    els.leverageValue.textContent = Number(store.leverage).toFixed(1);
-    els.loanRate.value = store.loanRate;
+    els.leverageValue.textContent = text;
+    els.leverage.setAttribute("aria-valuetext", text + " 倍");
+  }
+
+  /** 把 store 寫回所有輸入框；skipId 是使用者正在打字的那格，不去動它 */
+  function syncInputsFromStore(skipId){
+    updateCurrencyUI();
+    if(skipId !== "rate") els.rate.value = store.rate;
+    Object.keys(AMOUNT_FIELDS).forEach(function(id){
+      if(id !== skipId) els[id].value = C.round2(disp(store[AMOUNT_FIELDS[id]]));
+    });
+    if(skipId !== "baseReturn") els.baseReturn.value = store.baseReturn;
+    if(skipId !== "loanRate") els.loanRate.value = store.loanRate;
+    updateLeverageUI();
     updateRateButtons();
   }
 
-  function round2(n){
-    return Math.round(n * 100) / 100;
-  }
+  // ---------- 繪製 ----------
 
   function render(){
     var p = currentParams();
-    els.effDisplay.textContent = fmtPct(p.eff);
+    els.effDisplay.textContent = C.formatPercent(p.eff);
     els.posLine.style.display = p.L > 1.0 ? "" : "none";
 
     var target25 = targetFor(25);
     var target17 = targetFor(17);
-    var y25 = yearsToTarget(p.V0, p.annual, p.eff, target25);
-    var y17 = yearsToTarget(p.V0, p.annual, p.eff, target17);
+    var y25 = C.yearsToTarget(p.startValue, p.annual, p.eff, target25);
+    var y17 = C.yearsToTarget(p.startValue, p.annual, p.eff, target17);
 
-    renderVerdict(y25, y17, target25, target17);
+    renderVerdict(p, y25, y17, target25);
     renderBottomBar(y25, y17, target25, target17);
     renderTable1(p);
     renderTable2(p);
@@ -440,264 +737,218 @@ summary{cursor:pointer; font-size:15px; font-weight:700; color:var(--ink); paddi
     renderTable4(p);
   }
 
-  function targetFor(mult){
-    return store.retireExpenseEUR * 12 * mult;
-  }
-
-  function renderVerdict(y25, y17, target25, target17){
-    var cls = y25 === null ? "bad" : "ok";
-    els.verdict.className = "verdict " + cls;
-
-    if(y25 === null){
-      els.vWord.textContent = "60 年以上，改一下數字";
-    }else{
-      els.vWord.textContent = "25 倍要存到 " + fmt(toDisplay(target25)) + " " + store.currency + "，" + fmtYears(y25) + "到";
+  function renderVerdict(p, y25, y17, target25){
+    var n = errorCount();
+    var why = "清流君 4% 法則。他自己更推動態提領，約 17 倍，" + C.formatYearsTo(y17);
+    if(n > 0){
+      els.verdict.className = "verdict warn";
+      els.vWord.textContent = "有 " + n + " 個欄位要修正";
+      els.vWhy.textContent = "下面的結果先用上一次的有效數字計算。";
+      return;
     }
-    els.vWhy.textContent = "清流君 4% 法則。他自己更推動態提領，約 17 倍，" + fmtYears(y17) + "到";
+    if(p.eff <= -1){
+      els.verdict.className = "verdict bad";
+      els.vWord.textContent = "有效報酬低於 -100%，資產會歸零";
+      els.vWhy.textContent = "槓桿放大了虧損，調低槓桿或借款利率再看看。";
+      return;
+    }
+    if(y25 === null){
+      els.verdict.className = "verdict bad";
+      els.vWord.textContent = C.YEAR_CAP + " 年以上，改一下數字";
+      els.vWhy.textContent = why;
+      return;
+    }
+    els.verdict.className = "verdict ok";
+    els.vWord.textContent = "25 倍要存到 " + C.formatAmount(disp(target25)) + " " + store.currency + "，" + C.formatYearsTo(y25);
+    els.vWhy.textContent = why;
   }
 
   function renderBottomBar(y25, y17, target25, target17){
-    els.bbMain.textContent = "25 倍 要存到 " + fmt(toDisplay(target25)) + " " + store.currency;
-    els.bbYears.textContent = fmtYears(y25) + "到";
-    els.bbSub.textContent = "17 倍 " + fmt(toDisplay(target17)) + "，" + fmtYears(y17);
+    els.bbMain.textContent = "25 倍 要存到 " + C.formatAmount(disp(target25)) + " " + store.currency;
+    els.bbYears.textContent = C.formatYearsTo(y25);
+    els.bbSub.textContent = "17 倍 " + C.formatAmount(disp(target17)) + "，" + C.formatYears(y17);
+  }
+
+  /** 建一列兩欄：左邊標題加小字說明，右邊年數 */
+  function makeRow(label, note, right){
+    var tr = document.createElement("tr");
+    var td1 = document.createElement("td");
+    td1.appendChild(document.createTextNode(label));
+    var small = document.createElement("span");
+    small.className = "small";
+    small.textContent = note;
+    td1.appendChild(small);
+    var td2 = document.createElement("td");
+    td2.textContent = right;
+    tr.appendChild(td1);
+    tr.appendChild(td2);
+    return tr;
   }
 
   function renderTable1(p){
     var otherCcy = store.currency === "TWD" ? "EUR" : "TWD";
-    var rows = MULTIPLES.map(function(m){
-      var target = targetFor(m.mult);
-      var y = yearsToTarget(p.V0, p.annual, p.eff, target);
-      var main = toDisplay(target);
-      var other = toOtherDisplay(target);
-      var tr = document.createElement("tr");
-      tr.innerHTML =
-        "<td>" + m.label + '<span class="small">要存到 ' + fmt(main) + " " + store.currency + "（另一幣別 " + fmt(other) + " " + otherCcy + "）</span></td>" +
-        "<td>" + fmtYears(y) + "</td>";
-      return tr;
-    });
     els.table1Body.innerHTML = "";
-    rows.forEach(function(tr){ els.table1Body.appendChild(tr); });
+    C.MULTIPLES.forEach(function(m){
+      var target = targetFor(m.mult);
+      var y = C.yearsToTarget(p.startValue, p.annual, p.eff, target);
+      var note = "要存到 " + C.formatAmount(disp(target)) + " " + store.currency +
+        "（另一幣別 " + C.formatAmount(other(target)) + " " + otherCcy + "）";
+      els.table1Body.appendChild(makeRow(m.label, note, C.formatYears(y)));
+    });
   }
 
   function renderTable2(p){
-    // 表頭
-    var headHtml = "<th>倍數</th>";
-    TABLE2_RATES.forEach(function(r){
-      headHtml += "<th>" + (r * 100).toFixed(0) + "%</th>";
+    var headHtml = '<th scope="col">倍數</th>';
+    C.TABLE2_RATES.forEach(function(r){
+      headHtml += '<th scope="col">' + (r * 100).toFixed(0) + "%</th>";
     });
     els.table2Head.innerHTML = headHtml;
 
     els.table2Body.innerHTML = "";
-    MULTIPLES.forEach(function(m){
+    C.MULTIPLES.forEach(function(m){
       var target = targetFor(m.mult);
-      var tr = document.createElement("tr");
       var rowHtml = "<td>" + m.mult + " 倍</td>";
-      TABLE2_RATES.forEach(function(r){
-        var eff = effReturn(r, p.L, p.i);
-        var y = yearsToTarget(p.V0, p.annual, eff, target);
-        rowHtml += "<td>" + fmtYears(y) + "</td>";
+      C.TABLE2_RATES.forEach(function(r){
+        var eff = C.effectiveReturn(r, p.L, p.i);
+        rowHtml += "<td>" + C.formatYears(C.yearsToTarget(p.startValue, p.annual, eff, target)) + "</td>";
       });
+      var tr = document.createElement("tr");
       tr.innerHTML = rowHtml;
       els.table2Body.appendChild(tr);
     });
   }
 
   function renderTable3(p){
-    var target25 = targetFor(25);
-    var baseYears = yearsToTarget(p.V0, p.annual, p.eff, target25);
-
-    var scenarios = [];
-
-    // 現在的設定
-    scenarios.push({ label: "現在的設定", years: baseYears });
-
-    // 退休後每月支出少 20%
-    {
-      var target80 = store.retireExpenseEUR * 0.8 * 12 * 25;
-      var y = yearsToTarget(p.V0, p.annual, p.eff, target80);
-      scenarios.push({ label: "退休後每月支出少 20%", years: y });
-    }
-
-    // 底層報酬多 2 個百分點
-    {
-      var r2 = p.r + 0.02;
-      var eff2 = effReturn(r2, p.L, p.i);
-      var y2 = yearsToTarget(p.V0, p.annual, eff2, target25);
-      scenarios.push({ label: "底層報酬多 2 個百分點", years: y2 });
-    }
-
-    // 每年再投入多 5000（所選幣別）
-    {
-      var extraEUR = fromDisplay(5000);
-      var y3 = yearsToTarget(p.V0, p.annual + extraEUR, p.eff, target25);
-      scenarios.push({ label: "每年再投入多 5,000（" + store.currency + "）", years: y3 });
-    }
-
+    // 「每年再投入多 5,000」以畫面幣別計，換回 EUR 再算
+    var extraEUR = undisp(5000);
+    var results = C.sensitivity(p, extraEUR);
+    var labels = {
+      base: "現在的設定",
+      expense: "退休後每月支出少 20%",
+      "return": "底層報酬多 2 個百分點",
+      annual: "每年再投入多 5,000（" + store.currency + "）"
+    };
+    var baseYears = results[0].years;
     els.table3Body.innerHTML = "";
-    scenarios.forEach(function(s){
-      var diffText;
-      if(s.years === null || baseYears === null){
-        diffText = "無法比較";
-      }else{
-        var diff = s.years - baseYears;
-        diffText = diff === 0 ? "跟現在沒差" : (diff > 0 ? "比現在多 " + diff + " 年" : "比現在少 " + (-diff) + " 年");
-      }
-      var tr = document.createElement("tr");
-      tr.innerHTML =
-        "<td>" + s.label + '<span class="small">' + diffText + "</span></td>" +
-        "<td>" + fmtYears(s.years) + "</td>";
-      els.table3Body.appendChild(tr);
+    results.forEach(function(s){
+      els.table3Body.appendChild(makeRow(labels[s.key], C.diffText(baseYears, s.years), C.formatYears(s.years)));
     });
   }
 
   function renderTable4(p){
-    var targets = MULTIPLES.map(function(m){
-      return { mult: m.mult, target: targetFor(m.mult) };
-    }).sort(function(a, b){ return a.mult - b.mult; });
-
-    var crossed = {};
-    var rowsHtml = "";
+    var targets = C.MULTIPLES.map(function(m){ return { mult: m.mult, target: targetFor(m.mult) }; });
+    var proj = C.projectYears(p.startValue, p.annual, p.eff, targets);
     var thisYear = new Date().getFullYear();
-    var V = p.V0;
-
-    // 第 0 年（現在）先檢查是否已經跨過
-    targets.forEach(function(t){
-      if(V >= t.target) crossed[t.mult] = true;
-    });
-
-    var lastNeeded = 30;
-    var n = 1;
-    var maxTarget = targets[targets.length - 1].target;
-
-    while(n <= YEAR_CAP){
-      V = V * (1 + p.eff) + p.annual;
-      var crossLabel = "";
-      targets.forEach(function(t){
-        if(!crossed[t.mult] && V >= t.target){
-          crossed[t.mult] = true;
-          crossLabel = crossLabel ? (crossLabel + "、過 " + t.mult + " 倍") : ("過 " + t.mult + " 倍");
-        }
-      });
-      rowsHtml +=
-        "<tr><td>" + n + "</td><td>" + (thisYear + n) + "</td><td>" + fmt(toDisplay(V)) + "</td><td>" + crossLabel + "</td></tr>";
-
-      var allCrossed = targets.every(function(t){ return crossed[t.mult]; });
-      if(n >= lastNeeded && (allCrossed || V >= maxTarget)) break;
-      n++;
+    var html = "";
+    if(proj.startCrossed.length){
+      html += "<tr><td>0</td><td>" + thisYear + "</td><td>" + C.formatAmount(disp(p.startValue)) +
+        "</td><td>現在已過 " + proj.startCrossed.join("、") + " 倍</td></tr>";
     }
-
-    els.table4Body.innerHTML = rowsHtml;
+    proj.rows.forEach(function(row){
+      var label = row.crossed.map(function(m){ return "過 " + m + " 倍"; }).join("、");
+      html += "<tr><td>" + row.year + "</td><td>" + (thisYear + row.year) + "</td><td>" +
+        C.formatAmount(disp(row.value)) + "</td><td>" + label + "</td></tr>";
+    });
+    els.table4Body.innerHTML = html;
   }
 
-  // 事件綁定
+  // ---------- 事件 ----------
+
+  function commit(){
+    saveStorage();
+    render();
+  }
+
+  function selectCurrency(value){
+    if(value === store.currency) return;
+    store.currency = value;
+    clearAllErrors();
+    syncInputsFromStore();
+    commit();
+  }
+
   function bindEvents(){
-    els.currencyRadios.forEach(function(radio){
-      radio.addEventListener("change", function(){
-        if(radio.checked){
-          store.currency = radio.value;
-          syncInputsFromStore();
-          saveStorage();
+    els.ccyButtons.forEach(function(btn){
+      btn.addEventListener("click", function(){ selectCurrency(btn.getAttribute("data-ccy")); });
+    });
+
+    els.rate.addEventListener("input", function(){
+      var res = C.parseField(els.rate.value, C.FIELD_RULES.rate);
+      if(!res.ok){
+        setFieldError("rate", res.error);
+        render();
+        return;
+      }
+      setFieldError("rate", null);
+      var oldRate = store.rate;
+      store.rate = res.value;
+      // 在 TWD 模式下，使用者看到的是自己填的台幣金額，改匯率不該讓這些數字跳動，
+      // 所以反過來調整內部 EUR 值，維持台幣金額不變
+      if(store.currency === "TWD"){
+        Object.keys(AMOUNT_FIELDS).forEach(function(id){
+          var k = AMOUNT_FIELDS[id];
+          store[k] = store[k] * oldRate / store.rate;
+        });
+      }
+      syncInputsFromStore("rate");
+      commit();
+    });
+
+    Object.keys(AMOUNT_FIELDS).forEach(function(id){
+      els[id].addEventListener("input", function(){
+        if(id === "retireExpense") store.retireTouched = true;
+        var res = C.parseField(els[id].value, C.FIELD_RULES[id]);
+        if(!res.ok){
+          setFieldError(id, res.error);
           render();
+          return;
         }
+        setFieldError(id, null);
+        store[AMOUNT_FIELDS[id]] = undisp(res.value);
+        // 還沒動過「退休後每月支出」時，跟著現在支出一起變
+        if(id === "curExpense" && !store.retireTouched){
+          store.retireExpenseEUR = store.curExpenseEUR;
+          els.retireExpense.value = C.round2(disp(store.retireExpenseEUR));
+          setFieldError("retireExpense", null);
+        }
+        commit();
       });
     });
 
-    function selectCurrencyTab(value){
-      var radio = null;
-      els.currencyRadios.forEach(function(r){ if(r.value === value) radio = r; });
-      if(!radio) return;
-      if(!radio.checked){
-        radio.checked = true;
-        radio.dispatchEvent(new Event("change", { bubbles: true }));
-      }
-    }
-    els.tabEUR.addEventListener("click", function(){ selectCurrencyTab("EUR"); });
-    els.tabTWD.addEventListener("click", function(){ selectCurrencyTab("TWD"); });
-
-    els.rate.addEventListener("input", function(){
-      var v = parseFloat(els.rate.value);
-      store.rate = (!isNaN(v) && v > 0) ? v : 36.78;
-      syncInputsFromStore();
-      saveStorage();
-      render();
+    ["baseReturn", "loanRate"].forEach(function(id){
+      els[id].addEventListener("input", function(){
+        var res = C.parseField(els[id].value, C.FIELD_RULES[id]);
+        if(!res.ok){
+          setFieldError(id, res.error);
+          render();
+          return;
+        }
+        setFieldError(id, null);
+        store[id] = res.value;
+        updateRateButtons();
+        commit();
+      });
     });
 
-    els.asset.addEventListener("input", function(){
-      var v = parseFloat(els.asset.value);
-      store.assetEUR = isNaN(v) ? 0 : fromDisplay(v);
-      saveStorage();
-      render();
-    });
-
-    els.curExpense.addEventListener("input", function(){
-      var v = parseFloat(els.curExpense.value);
-      store.curExpenseEUR = isNaN(v) ? 0 : fromDisplay(v);
-      if(!store.retireTouched){
-        store.retireExpenseEUR = store.curExpenseEUR;
-        els.retireExpense.value = round2(toDisplay(store.retireExpenseEUR));
-      }
-      saveStorage();
-      render();
-    });
-
-    els.retireExpense.addEventListener("input", function(){
-      store.retireTouched = true;
-      var v = parseFloat(els.retireExpense.value);
-      store.retireExpenseEUR = isNaN(v) ? 0 : fromDisplay(v);
-      saveStorage();
-      render();
-    });
-
-    els.lump.addEventListener("input", function(){
-      var v = parseFloat(els.lump.value);
-      store.lumpEUR = isNaN(v) ? 0 : fromDisplay(v);
-      saveStorage();
-      render();
-    });
-
-    els.annual.addEventListener("input", function(){
-      var v = parseFloat(els.annual.value);
-      store.annualEUR = isNaN(v) ? 0 : fromDisplay(v);
-      saveStorage();
-      render();
-    });
-
-    els.baseReturn.addEventListener("input", function(){
-      var v = parseFloat(els.baseReturn.value);
-      store.baseReturn = isNaN(v) ? 0 : v;
-      updateRateButtons();
-      saveStorage();
-      render();
-    });
-
-    document.querySelectorAll("[data-rate]").forEach(function(btn){
+    els.rateButtons.forEach(function(btn){
       btn.addEventListener("click", function(){
         store.baseReturn = parseFloat(btn.getAttribute("data-rate"));
         els.baseReturn.value = store.baseReturn;
+        setFieldError("baseReturn", null);
         updateRateButtons();
-        saveStorage();
-        render();
+        commit();
       });
     });
 
     els.leverage.addEventListener("input", function(){
       var v = parseFloat(els.leverage.value);
-      store.leverage = isNaN(v) ? 1.0 : Math.max(1.0, v);
-      els.leverageValue.textContent = store.leverage.toFixed(1);
-      saveStorage();
-      render();
-    });
-
-    els.loanRate.addEventListener("input", function(){
-      var v = parseFloat(els.loanRate.value);
-      store.loanRate = isNaN(v) ? 0 : v;
-      saveStorage();
-      render();
+      store.leverage = isNaN(v) ? C.LEVERAGE_MIN : Math.min(C.LEVERAGE_MAX, Math.max(C.LEVERAGE_MIN, v));
+      updateLeverageUI();
+      commit();
     });
   }
 
   loadStorage();
-  sanitizeStore();
   if(store.leverage > 1.0 || store.lumpEUR > 0){
     els.advDetails.open = true;
   }
