@@ -167,6 +167,16 @@
     return currency === "TWD" ? amount / rate : amount;
   }
 
+  /*
+   * 去掉浮點數雜訊：只保留 12 位有效數字，跟 withdraw-calc 的 clean() 相同。
+   * 只用在百分比：金額可能超過 12 位數（上限 10 兆），截掉會讓尾數變 0。
+   * 例如 6% 底層、1.5 倍、1.5% 借款，有效報酬數學上是 8.25%，
+   * 浮點數算出 0.08249999999999999，不先清掉的話四捨五入會變 8.2% 而不是 8.3%。
+   */
+  function clean(x){
+    return Number(Number(x).toPrecision(12));
+  }
+
   /** 金額取整數加千分位；避免出現「-0」 */
   function formatAmount(n){
     var v = Math.round(n);
@@ -175,7 +185,7 @@
   }
   /** 小數轉百分比，一位小數，例如 0.08 變成「8.0%」 */
   function formatPercent(frac){
-    var v = Math.round(frac * 1000) / 10;
+    var v = Math.round(clean(frac * 1000)) / 10;
     if(v === 0) v = 0;
     return v.toFixed(1) + "%";
   }
@@ -280,6 +290,7 @@
     effectiveReturn: effectiveReturn,
     targetAmount: targetAmount,
     hasReached: hasReached,
+    clean: clean,
     stepYear: stepYear,
     yearsToTarget: yearsToTarget,
     projectYears: projectYears,
