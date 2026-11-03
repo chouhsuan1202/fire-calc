@@ -14,8 +14,9 @@ var playwright;
 try{
   playwright = require("playwright");
 }catch(e){
-  console.log("略過：找不到 playwright（npm i -D playwright 後可跑畫面測試）");
-  process.exit(0);
+  // CI 會設 REQUIRE_UI=1：找不到 Playwright 就算失敗，不能默默略過
+  console.log((process.env.REQUIRE_UI ? "失敗" : "略過") + "：找不到 playwright（npm i -D playwright 後可跑畫面測試）");
+  process.exit(process.env.REQUIRE_UI ? 1 : 0);
 }
 
 var URL = "file://" + path.join(__dirname, "..", "index.html");
@@ -170,6 +171,102 @@ test("效能：連續輸入 200 次，每次重算都在 5ms 內", async functio
   await page.context().close();
 });
 
+test("修正：有效報酬 8.25% 顯示成 8.3%，不會被浮點誤差捨成 8.2%", async function(browser){
+  var page = await freshPage(browser);
+  await page.fill("#baseReturn", "6");
+  await page.click("#advDetails summary");
+  await page.fill("#loanRate", "1.5");
+  await page.$eval("#leverage", function(el){ el.value = "1.5"; el.dispatchEvent(new Event("input")); });
+  // 手算：6% + 0.5 乘以 (6% 減 1.5%) = 8.25%，四捨五入到一位是 8.3%
+  assert.strictEqual(await page.textContent("#effDisplay"), "8.3%");
+  await page.context().close();
+});
+
+test("無障礙：每個輸入欄位都有可讀的名稱", async function(browser){
+  var page = await freshPage(browser);
+  var missing = await page.evaluate(function(){
+    return Array.prototype.slice.call(document.querySelectorAll("input")).filter(function(el){
+      return !el.labels || !el.labels.length || !el.labels[0].textContent.trim();
+    }).map(function(el){ return el.id; });
+  });
+  assert.deepStrictEqual(missing, []);
+  await page.context().close();
+});
+
+test("無障礙：錯誤提示用 aria-live 區塊、跟欄位用 aria-describedby 連起來", async function(browser){
+  var page = await freshPage(browser);
+  var ids = ["rate", "asset", "curExpense", "retireExpense", "annual", "baseReturn", "lump", "loanRate"];
+  for(var k = 0; k < ids.length; k++){
+    var id = ids[k];
+    assert.strictEqual(await page.getAttribute("#" + id, "aria-describedby"), id + "-err", id);
+    assert.strictEqual(await page.getAttribute("#" + id + "-err", "aria-live"), "polite", id);
+  }
+  // 沒有錯時提示是空的、不占高度；出錯時顯示文字
+  assert.strictEqual(await page.isHidden("#asset-err"), true);
+  await page.fill("#asset", "-1");
+  assert.strictEqual(await page.textContent("#asset-err"), "不能是負數");
+  assert.strictEqual(await page.isVisible("#asset-err"), true);
+  await page.fill("#asset", "1");
+  assert.strictEqual(await page.isHidden("#asset-err"), true);
+  await page.context().close();
+});
+
+test("鍵盤：只用 Tab、空白鍵、Enter、方向鍵就能操作全部功能", async function(browser){
+  var page = await freshPage(browser);
+  // Tab 依序走過的元件
+  var order = [];
+  for(var k = 0; k < 20; k++){
+    await page.keyboard.press("Tab");
+    order.push(await page.evaluate(function(){
+      var a = document.activeElement;
+      return a.id || a.getAttribute("data-ccy") || a.getAttribute("data-rate") || a.tagName.toLowerCase();
+    }));
+  }
+  ["tabEUR", "tabTWD", "rate", "asset", "curExpense", "retireExpense", "annual", "baseReturn", "6", "8", "10", "summary"].forEach(function(id, idx){
+    assert.strictEqual(order[idx], id, "第 " + (idx + 1) + " 個 Tab 應該到 " + id + "，實際是 " + order[idx]);
+  });
+
+  // 空白鍵切幣別
+  await page.focus("#tabTWD");
+  await page.keyboard.press("Space");
+  assert.strictEqual(await page.getAttribute("#tabTWD", "aria-pressed"), "true");
+  assert.strictEqual(await page.inputValue("#asset"), "7356000");
+
+  // Enter 按常用報酬率
+  await page.focus(".rate-btn[data-rate='10']");
+  await page.keyboard.press("Enter");
+  assert.strictEqual(await page.inputValue("#baseReturn"), "10");
+
+  // Enter 打開進階，方向鍵調槓桿
+  await page.focus("#advDetails summary");
+  await page.keyboard.press("Enter");
+  assert.strictEqual(await page.evaluate(function(){ return document.getElementById("advDetails").open; }), true);
+  await page.focus("#leverage");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  assert.strictEqual(await page.textContent("#leverageValue"), "1.2");
+  assert.strictEqual(await page.getAttribute("#leverage", "aria-valuetext"), "1.2 倍");
+  // 有效報酬 = 10% + 0.2 乘以 (10% 減 4%) = 11.2%
+  assert.strictEqual(await page.textContent("#effDisplay"), "11.2%");
+  assert.deepStrictEqual(page._errors, []);
+  await page.context().close();
+});
+
+test("非法輸入：負數、空白、超過上限、打到一半的數字，畫面都不會壞", async function(browser){
+  var page = await freshPage(browser);
+  var cases = [["#asset", "-5"], ["#curExpense", ""], ["#retireExpense", "0"], ["#annual", "1e20"], ["#baseReturn", "-80"], ["#rate", "0"]];
+  for(var k = 0; k < cases.length; k++){
+    await page.fill(cases[k][0], cases[k][1]);
+  }
+  assert.strictEqual(await page.textContent("#vWord"), "有 6 個欄位要修正");
+  var text = await page.textContent("main") + await page.textContent("#bottomBar");
+  assert.ok(!/NaN|Infinity|undefined|null/.test(text), "畫面出現異常字串");
+  // 結果維持上一次的有效值
+  assert.strictEqual(await page.textContent("#bbYears"), "19 年到");
+  assert.deepStrictEqual(page._errors, []);
+  await page.context().close();
+});
+
 test("手機寬度 375px 沒有橫向捲動", async function(browser){
   var page = await freshPage(browser, { viewport: { width: 375, height: 700 } });
   await page.click("#advDetails summary");
@@ -186,8 +283,8 @@ test("手機寬度 375px 沒有橫向捲動", async function(browser){
   try{
     browser = await playwright.chromium.launch();
   }catch(e){
-    console.log("略過：Chromium 無法啟動（" + e.message.split("\n")[0] + "）");
-    process.exit(0);
+    console.log((process.env.REQUIRE_UI ? "失敗" : "略過") + "：Chromium 無法啟動（" + e.message.split("\n")[0] + "）");
+    process.exit(process.env.REQUIRE_UI ? 1 : 0);
   }
   var passed = 0, failed = 0;
   for(var k = 0; k < tests.length; k++){

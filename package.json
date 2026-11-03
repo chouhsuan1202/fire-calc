@@ -1,0 +1,9 @@
+{
+  "name": "fire-calc",
+  "private": true,
+  "description": "FIRE 計算器（槓桿老師版）",
+  "scripts": {
+    "test": "node tests/fire-core.test.js",
+    "test:ui": "node tests/ui.test.js"
+  }
+}
